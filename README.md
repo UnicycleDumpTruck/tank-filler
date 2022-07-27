@@ -31,11 +31,6 @@
 
 ## Installation
 
-You can install _Tank Filler_ via [pip] from [PyPI]:
-
-```console
-$ pip install tank-filler
-```
 
 ## Usage
 
