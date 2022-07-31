@@ -42,6 +42,13 @@ class Knob():
 
 knobs = []
 knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x36)))
+knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x37)))
+knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x38)))
+#knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x39)))
+#knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x3a)))
+#knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x3b)))
+#knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x3c)))
+#knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x3d)))
 
 
 while True:
