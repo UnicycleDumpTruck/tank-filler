@@ -1,8 +1,5 @@
 """Neopixel matrix that acts as 'gas mixing' readout."""
 from random import choice
-# from rich import print
-# from rich.console import Console
-# console = Console()
 
 
 class Mtx():
@@ -11,21 +8,11 @@ class Mtx():
 
     def __init__(self, height, width):
         self.grid = [[Mtx.colors['off']
-                      for w in range(width)] for h in range(height)]
-        self.locations = dict()
-        for key in Mtx.colors.keys():
-            self.locations[key] = []
+                      for _ in range(width)] for _ in range(height)]
+        self.locations = {key: [] for key in Mtx.colors.keys()}
         self.locations['off'] = [(row, col)
                                  for col in range(width) for row in range(height)]
         # print(self.locations)
-
-    # def print_grid(self):
-    #     for row in self.grid:
-    #         for column in row:
-    #             # The style can't have spaces inside rgb()
-    #             styl = f"on rgb({column[0]},{column[1]},{column[2]})"
-    #             console.print("X", style=styl, end=" ")
-    #         console.print("")
 
     def print_grid(self):
         for row in self.grid:
@@ -38,13 +25,20 @@ class Mtx():
             if len(self.locations['off']):
                 row, col = choice(self.locations['off'])
                 self.grid[row][col] = Mtx.colors[color]
+                self.locations['off'].remove((row, col))
                 self.locations[color].append((row, col))
+            else:
+                print("No off pixels.")
 
     def remove_pxls(self, number, color):
         for _ in range(number):
             if len(self.locations[color]):
                 row, col = choice(self.locations[color])
                 self.grid[row][col] = Mtx.colors['off']
+                self.locations[color].remove((row, col))
+                self.locations['off'].append((row, col))
+            else:
+                print(f"No more {color} pixels left.")
 
 
 if __name__ == "__main__":

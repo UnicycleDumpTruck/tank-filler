@@ -6,7 +6,8 @@
 import board
 from adafruit_seesaw import seesaw, rotaryio, digitalio
 
-RESOLUTION = 20 # Only change on every nth position.
+RESOLUTION = 20  # Only change on every nth position.
+
 
 class Knob():
     def __init__(self, seesaw):
@@ -40,8 +41,8 @@ class Knob():
             self.button_held = False
             print("Button released")
 
-knobs = []
-knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x36)))
+
+knobs = [Knob(seesaw.Seesaw(board.I2C(), addr=0x36))]
 knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x37)))
 knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x38)))
 #knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x39)))
