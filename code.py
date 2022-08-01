@@ -3,9 +3,37 @@
 
 """I2C rotary encoders in array of Knobs."""
 
+import time
 from random import choice
+from itertools import chain
+
 import board
 from adafruit_seesaw import seesaw, rotaryio, digitalio
+import neopixel
+
+
+# On CircuitPlayground Express, and boards with built in status NeoPixel -> board.NEOPIXEL
+# Otherwise choose an open pin connected to the Data In of the NeoPixel strip, i.e. board.D1
+pixel_pin = board.D13
+
+# On a Raspberry pi, use this instead, not all pins are supported
+# pixel_pin = board.D18
+
+# The number of NeoPixels
+num_pixels = 49
+
+# The order of the pixel colors - RGB or GRB. Some NeoPixels have red and green reversed!
+# For RGBW NeoPixels, simply change the ORDER to RGBW or GRBW.
+ORDER = neopixel.GRB
+
+pixels = neopixel.NeoPixel(
+    pixel_pin, num_pixels, brightness=0.2, auto_write=False, pixel_order=ORDER
+)
+
+
+pixels.fill((255,0,0))
+pixels.show()
+
 
 RESOLUTION = 20  # Only change on every nth position.
 
@@ -27,6 +55,12 @@ class Mtx():
             for column in row:
                 print(str(column).strip(), end="  ")
             print("")
+        self.show_grid()
+
+    def show_grid(self):
+        for i, pxl in enumerate(chain(self.grid)):
+            pixels[i] = pxl
+        pixels.show()
 
     def add_pxls(self, number, color):
         for _ in range(number):
@@ -51,7 +85,7 @@ class Mtx():
         self.print_grid()
 
 
-mat = Mtx(8, 8)
+mat = Mtx(7,7)
 
 
 class Knob():
@@ -95,7 +129,7 @@ class Knob():
 
 
 knobs = [Knob(seesaw.Seesaw(board.I2C(), addr=0x36), mat, 'red')]
-#knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x37)))
+knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x37), mat, 'blue'))
 #knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x38)))
 #knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x39)))
 #knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x3a)))
@@ -104,6 +138,8 @@ knobs = [Knob(seesaw.Seesaw(board.I2C(), addr=0x36), mat, 'red')]
 #knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x3d)))
 
 # if __name__ == "__main__":
+
+print("Boot complete, starting loop...")
 
 while True:
 
