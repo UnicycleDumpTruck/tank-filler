@@ -5,12 +5,22 @@
 
 import time
 from random import choice
-from itertools import chain
 
 import board
-from adafruit_seesaw import seesaw, rotaryio, digitalio
+from adafruit_seesaw import seesaw, rotaryio
+from adafruit_seesaw import digitalio as sdio
 import neopixel
+import digitalio as dio
+from adafruit_debouncer import Debouncer
 
+
+lever_pin = dio.DigitalInOut(board.D10)
+lever_pin.direction = dio.Direction.INPUT
+lever_pin.pull = dio.Pull.UP
+lever = Debouncer(lever_pin)
+
+
+relay_pin = board.D11
 
 # On CircuitPlayground Express, and boards with built in status NeoPixel -> board.NEOPIXEL
 # Otherwise choose an open pin connected to the Data In of the NeoPixel strip, i.e. board.D1
@@ -20,73 +30,110 @@ pixel_pin = board.D13
 # pixel_pin = board.D18
 
 # The number of NeoPixels
-num_pixels = 49
+num_pixels = 64
 
 # The order of the pixel colors - RGB or GRB. Some NeoPixels have red and green reversed!
 # For RGBW NeoPixels, simply change the ORDER to RGBW or GRBW.
 ORDER = neopixel.GRB
 
 pixels = neopixel.NeoPixel(
-    pixel_pin, num_pixels, brightness=0.2, auto_write=False, pixel_order=ORDER
+    pixel_pin, num_pixels, brightness=255, auto_write=True, pixel_order=ORDER
+)
+strip = neopixel.NeoPixel(
+        board.D12, 64, brightness=255, auto_write=True, pixel_order=ORDER
 )
 
 
-pixels.fill((255,0,0))
-pixels.show()
+pixels.fill((0,0,0))
+#pixels.show()
 
+strip.fill((0,0,0))
 
-RESOLUTION = 20  # Only change on every nth position.
+RESOLUTION = 1  # Only change on every nth position.
 
 
 class Mtx():
     colors = {'off': (0, 0, 0), 'red': (255, 0, 0),
               'green': (0, 255, 0), 'blue': (0, 0, 255)}
 
-    def __init__(self, height, width):
-        self.grid = [[Mtx.colors['off']
-                      for _ in range(width)] for _ in range(height)]
+    color_names= {(0, 0, 0): 'off', (255, 0, 0):'red',
+              (0, 255, 0):'green', (0, 0, 255):'blue'}
+
+    def __init__(self, height, width, neopixels):
+        self.height = height
+        self.width = width
+        self.pixels = neopixels
+        self.length = height * width
+        self.line = [Mtx.colors['off'] for _ in range(self.length)]
         self.locations = {key: [] for key in Mtx.colors.keys()}
-        self.locations['off'] = [(row, col)
-                                 for col in range(width) for row in range(height)]
-        # print(self.locations)
+        self.locations['off'] = [i for i in range(self.length)]
+        print(self.locations)
 
     def print_grid(self):
-        for row in self.grid:
-            for column in row:
-                print(str(column).strip(), end="  ")
+        for row in range(self.height):
+            for column in range(self.width):
+                print(str(self.line[row*column + column]).strip(), end="  ")
             print("")
         self.show_grid()
 
     def show_grid(self):
-        for i, pxl in enumerate(chain(self.grid)):
-            pixels[i] = pxl
-        pixels.show()
+        for i, pxl in enumerate(self.line):
+            self.pixels[i] = pxl
+        self.pixels.show()
 
     def add_pxls(self, number, color):
         for _ in range(number):
             if len(self.locations['off']):
-                row, col = choice(self.locations['off'])
-                self.grid[row][col] = Mtx.colors[color]
-                self.locations['off'].remove((row, col))
-                self.locations[color].append((row, col))
+                loc = choice(self.locations['off'])
+                self.line[loc] = Mtx.colors[color]
+                self.pixels[loc] = Mtx.colors[color]
+                self.locations['off'].remove(loc)
+                self.locations[color].append(loc)
             else:
                 print("No off pixels.")
-        self.print_grid()
+        # self.print_grid()
 
     def remove_pxls(self, number, color):
         for _ in range(number):
             if len(self.locations[color]):
-                row, col = choice(self.locations[color])
-                self.grid[row][col] = Mtx.colors['off']
-                self.locations[color].remove((row, col))
-                self.locations['off'].append((row, col))
+                loc = choice(self.locations[color])
+                self.line[loc] = Mtx.colors['off']
+                self.pixels[loc] = Mtx.colors['off']
+                self.locations[color].remove(loc)
+                self.locations['off'].append(loc)
             else:
                 print(f"No more {color} pixels left.")
-        self.print_grid()
+        # self.print_grid()
+    def push(self, index, color):
+        # print(f"Pushing index:{index} color:{color}")
+        prev_color = Mtx.color_names[self.line[index]]
+        self.locations[color].append(index)
+        self.locations[prev_color].remove(index)
+        self.line[index] = Mtx.colors[color]
+        self.pixels[index] = Mtx.colors[color]
+    def pop(self, index):
+        color = Mtx.color_names[self.line[index]]
+        # print(f"Index: {index} Color name:{color}")
+        self.locations[color].remove(index)
+        self.line[index] = Mtx.colors['off']
+        self.locations['off'].append(index)
+        self.pixels[index] = Mtx.colors['off']
+        return color
 
 
-mat = Mtx(7,7)
+mat = Mtx(8,8, pixels)
+tank = Mtx(2,32, strip)
 
+transfer_map = []
+for position in range(32):
+    transfer_map.append(position)
+    transfer_map.append(63-position)
+
+def transfer():
+    for i in range(num_pixels):
+        tank.push(transfer_map[i], mat.pop(i))
+    tank.show_grid()
+    mat.show_grid()
 
 class Knob():
     def __init__(self, seesaw, matrix: Mtx, color):
@@ -98,7 +145,7 @@ class Knob():
         if seesaw_product != 4991:
             print("Wrong firmware loaded?  Expected 4991")
 
-        self.button = digitalio.DigitalIO(seesaw, 24)
+        self.button = sdio.DigitalIO(seesaw, 24)
         self.button_held = False
         self.encoder = rotaryio.IncrementalEncoder(self.seesaw)
         self.last_position = 0
@@ -109,14 +156,14 @@ class Knob():
         if position > self.last_position:
             print(f"Position increased to: {position}, diff {position - self.last_position}")
             if ((position - self.last_change) > RESOLUTION):
-                print("ADD "*15)
+                # print("ADD "*15)
                 self.matrix.add_pxls(1, self.color)
                 self.last_change = position
             self.last_position = position
         elif position < self.last_position:
             print(f"Position decreased to: {position}, diff {self.last_position - position}")
             if ((self.last_change - position) > RESOLUTION):
-                print("REMOVE "*15)
+                # print("REMOVE "*15)
                 self.matrix.remove_pxls(1, self.color)
                 self.last_change = position
             self.last_position = position
@@ -130,7 +177,7 @@ class Knob():
 
 knobs = [Knob(seesaw.Seesaw(board.I2C(), addr=0x36), mat, 'red')]
 knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x37), mat, 'blue'))
-#knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x38)))
+knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x38), mat, 'green'))
 #knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x39)))
 #knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x3a)))
 #knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x3b)))
@@ -142,6 +189,10 @@ knobs.append(Knob(seesaw.Seesaw(board.I2C(), addr=0x37), mat, 'blue'))
 print("Boot complete, starting loop...")
 
 while True:
+    lever.update()
+    if lever.rose or lever.fell:
+        print("Lever changed!")
+        transfer()
 
     for knob in knobs:
         knob.update()
