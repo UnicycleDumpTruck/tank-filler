@@ -5,7 +5,7 @@
 
 import time
 from random import choice
-
+from time import sleep
 import board
 from adafruit_seesaw import seesaw, rotaryio
 from adafruit_seesaw import digitalio as sdio
@@ -19,8 +19,11 @@ lever_pin.direction = dio.Direction.INPUT
 lever_pin.pull = dio.Pull.UP
 lever = Debouncer(lever_pin)
 
+sound_trigger_pin = dio.DigitalInOut(board.D9)
+sound_trigger_pin.direction = dio.Direction.OUTPUT
+sound_trigger_pin.drive_mode = dio.DriveMode.OPEN_DRAIN
+sound_trigger_pin.value = True
 
-relay_pin = board.D11
 
 # On CircuitPlayground Express, and boards with built in status NeoPixel -> board.NEOPIXEL
 # Otherwise choose an open pin connected to the Data In of the NeoPixel strip, i.e. board.D1
@@ -130,10 +133,13 @@ for position in range(32):
     transfer_map.append(63-position)
 
 def transfer():
+    sound_trigger_pin.value = False
     for i in range(num_pixels):
         tank.push(transfer_map[i], mat.pop(i))
+        sleep(0.03)
     tank.show_grid()
     mat.show_grid()
+    sound_trigger_pin.value = True
 
 class Knob():
     def __init__(self, seesaw, matrix: Mtx, color):
